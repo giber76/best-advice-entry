@@ -22,15 +22,37 @@ const ADVICE =
 
 // The gate refuses anything outside 1–200 characters or whitespace-only,
 // so fail loudly here instead of writing an entry the judge never sees.
-if (ADVICE.length < 1 || ADVICE.length > 200 || !/\S/.test(ADVICE)) {
-  throw new Error(`advice fails the gate at ${ADVICE.length} characters`);
+// The entry must also be exactly one sentence: a single terminal period,
+// no other sentence-ending punctuation, and no line breaks — a second
+// sentence or a stray "!" would break the one-breath read the entry wins on.
+function validateAdvice(advice: string): void {
+  if (advice.length < 1 || advice.length > 200) {
+    throw new Error(`advice fails the gate at ${advice.length} characters`);
+  }
+  if (!/\S/.test(advice)) {
+    throw new Error("advice must not be whitespace-only");
+  }
+  if (advice.includes("\n") || advice.includes("\r")) {
+    throw new Error("advice must be a single line");
+  }
+  const periods = (advice.match(/\./g) ?? []).length;
+  if (periods !== 1 || !advice.endsWith(".") || /[!?]/.test(advice)) {
+    throw new Error("advice must be exactly one sentence ending in one period");
+  }
 }
+
+validateAdvice(ADVICE);
 
 const dest = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 
-// In the grader /output is a mount point: create it when it is missing,
-// never remove it and never empty it wholesale.
-mkdirSync(dest, { recursive: true });
-writeFileSync(`${dest}/entry.txt`, ADVICE, "utf8");
+// Write the entry as the file's only content: no trailing newline, so the
+// file the judge reads is exactly the 148-character sentence, byte for byte.
+function writeEntry(dir: string, advice: string): void {
+  // In the grader /output is a mount point: create it when it is missing,
+  // never remove it and never empty it wholesale.
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(`${dir}/entry.txt`, advice, "utf8");
+  console.log(`wrote ${dir}/entry.txt (${advice.length} characters)`);
+}
 
-console.log(`wrote ${dest}/entry.txt (${ADVICE.length} characters)`);
+writeEntry(dest, ADVICE);
